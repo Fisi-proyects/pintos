@@ -84,6 +84,9 @@ struct thread
   {
     /* Owned by thread.c. */
     tid_t tid;                          /**< Thread identifier. */
+
+    int64_t remain_time_to_wake_up;    /**< Time to wake up. */
+
     enum thread_status status;          /**< Thread state. */
     char name[16];                      /**< Name (for debugging purposes). */
     uint8_t *stack;                     /**< Saved stack pointer. */
@@ -124,7 +127,11 @@ tid_t thread_tid (void);
 const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
-void thread_yield (void);
+void thread_yield (void);               //busy waiting //original
+void set_thread_sleep(int64_t ticks);
+void wake_up_thread(int64_t ticks);
+
+
 
 /** Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

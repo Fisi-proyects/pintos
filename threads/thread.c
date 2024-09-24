@@ -24,6 +24,10 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* lista de todos los procesos durmientes (blockeados) espaerando
+  a ser llamados mediante wake up */
+static struct list sleep_thread_list;
+
 /** List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -92,6 +96,8 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+
+  list_init (&sleep_thread_list); // inicializando lista de threads dormidos
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -313,6 +319,58 @@ thread_yield (void)
   schedule ();
   intr_set_level (old_level);
 }
+
+bool compare_to_wake_up(const struct list_elem *a, const struct list_elem *b, void *aux){    struct thread *thread_a = list_entry(a, struct thread, elem);
+    struct thread *thread_b = list_entry(b, struct thread, elem);
+    return thread_a->remain_time_to_wake_up < thread_b->remain_time_to_wake_up;  //comparamos los tiempos de espera de los threads
+  //si el tiempo de espera de a es menor que el tiempo de espera de b
+  //devolvemos true, de lo contrario devolvemos false
+  //esto se hace para ordenar la lista de threads dormidos
+  //de menor a mayor tiempo de espera
+  //para que el thread que deba despertar antes sea el primero
+  //en la lista
+  //es una especie de ordenamiento burbuja
+}
+
+
+void set_thread_sleep(int64_t ticks){
+  //desactivamos las interrupciones
+  //para evitar que se llame a esta funcion
+  //mientras se esta ejecutando
+  enum intr_level old_level = intr_disable ();
+  struct thread *current_thread = thread_current ();
+
+  ASSERT (is_thread (current_thread));
+  ASSERT (current_thread != idle_thread);
+
+  current_thread->remain_time_to_wake_up = ticks;
+  
+      //guardamos el tiempo que necesita esperar el  thread
+  list_insert_ordered(&sleep_thread_list, &current_thread->elem, compare_to_wake_up, 0); //insertamos el thread en la lista de threads dormidos
+  thread_block(); //bloqueamos el thread // hasta que el tiempo de espera se cumpla
+  intr_set_level (old_level); //activamos las interrupciones
+}
+
+void wake_up_thread(int64_t ticks){
+    // Despertar hilos dormidos cuyo tiempo de despertar haya llegado
+    while (!list_empty(&sleep_thread_list)) {
+        struct thread *t = list_entry(list_front(&sleep_thread_list), struct thread, elem);
+
+        if (t->remain_time_to_wake_up <= ticks) {
+            list_pop_front(&sleep_thread_list);
+            thread_unblock(t);
+        } else {
+            break;  // Como la lista está ordenada, si el primero no debe despertarse, ninguno más debe
+          }
+    }
+}
+
+
+
+/** Yields the CPU.  The current thread is not put to sleep and
+   may be scheduled again immediately at the scheduler's whim. */
+
+
 
 /** Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
@@ -578,7 +636,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /** Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
