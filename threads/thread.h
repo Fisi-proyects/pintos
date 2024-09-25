@@ -90,7 +90,17 @@ struct thread
     enum thread_status status;          /**< Thread state. */
     char name[16];                      /**< Name (for debugging purposes). */
     uint8_t *stack;                     /**< Saved stack pointer. */
+
+    struct lock *released_lock;          /**< Lock that the thread has released. */
+    struct list donations;              /**< List of threads that donated priority to this thread. */
+    struct list_elem donation_elem;     /**< List element for donation list. */
+
+
+   //Esta prioridad es la que se va a cambiar en caso de donaciones
     int priority;                       /**< Priority. */
+    int original_priority;              /**< Original priority. */
+
+
     struct list_elem allelem;           /**< List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -125,6 +135,10 @@ void thread_unblock (struct thread *);
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
+
+
+
+bool compare_to_wake_up(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);               //busy waiting //original

@@ -106,6 +106,18 @@ thread_init (void)
   initial_thread->tid = allocate_tid ();
 }
 
+
+
+
+bool compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+  struct thread *thread_a = list_entry(a, struct thread, elem);
+  struct thread *thread_b = list_entry(b, struct thread, elem);
+  return thread_a->priority > thread_b->priority;
+}
+
+
+
+
 /** Starts preemptive thread scheduling by enabling interrupts.
    Also creates the idle thread. */
 void
@@ -243,7 +255,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  //ordenando por prioridad en lugar de push_back
+  list_insert_ordered(&ready_list, &t->elem, compare_thread_priority, 0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -314,11 +327,33 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
+    //list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, compare_thread_priority, 0);
+  cur->status = THREAD_READY;
+  schedule ();//cede el cpu al siguiente hilo en la lista
+  intr_set_level (old_level);
+}
+
+
+
+/* void
+thread_yield (void) 
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
 }
+ */
+
+/* Start of timer_sleep alarm clock implementation */
 
 bool compare_to_wake_up(const struct list_elem *a, const struct list_elem *b, void *aux){    struct thread *thread_a = list_entry(a, struct thread, elem);
     struct thread *thread_b = list_entry(b, struct thread, elem);
@@ -331,7 +366,6 @@ bool compare_to_wake_up(const struct list_elem *a, const struct list_elem *b, vo
   //en la lista
   //es una especie de ordenamiento burbuja
 }
-
 
 void set_thread_sleep(int64_t ticks){
   //desactivamos las interrupciones
@@ -351,6 +385,7 @@ void set_thread_sleep(int64_t ticks){
   intr_set_level (old_level); //activamos las interrupciones
 }
 
+
 void wake_up_thread(int64_t ticks){
     // Despertar hilos dormidos cuyo tiempo de despertar haya llegado
     while (!list_empty(&sleep_thread_list)) {
@@ -365,6 +400,9 @@ void wake_up_thread(int64_t ticks){
     }
 }
 
+
+
+/* end of the thread_sleep implementation */
 
 
 /** Yields the CPU.  The current thread is not put to sleep and
