@@ -87,10 +87,6 @@ timer_elapsed (int64_t then)
 /** Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
-
-
-
-
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks (); // 
@@ -98,9 +94,6 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
   set_thread_sleep(ticks+start);
 }
-
-
-
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
    turned on. */
@@ -179,6 +172,17 @@ timer_interrupt (struct intr_frame *args UNUSED)
   //set time_to w
   ticks++;
   thread_tick ();
+
+  if(thread_mlfqs){
+    bsd_recent_cpu_increment();
+    if(ticks % TIMER_FREQ == 0){
+      bsd_load_avg();
+      bsd_update_recent_cpu();
+    }
+    if(ticks % 4 == 0){
+      bsd_update_priority();
+    }
+  }
   wake_up_thread(ticks);
 }
 
