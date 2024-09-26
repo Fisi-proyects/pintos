@@ -486,7 +486,7 @@ thread_get_priority (void)
 //funcion para calcular la prioridad de un hilo
 void bsd_priority(struct thread *t){
   if(t == idle_thread) return;
-  t->priority = PRI_MAX - fp_to_int_round(div_fp_int(t->recent_cpu, 4)) - (t->nice * 2);
+  t->priority = PRI_MAX - fixed_point_to_int_round(divide_fixed_point_and_int(t->recent_cpu, 4)) - (t->nice * 2);
   if (t->priority > PRI_MAX) {
     t->priority = PRI_MAX;
   }
@@ -509,9 +509,9 @@ void bsd_update_priority(void){
 
 //funcion para calcular el recent_cpu de un hilo
 void bsd_recent_cpu(struct thread *t){
-  int load_avg_2 = mult_fp_int(load_avg, 2);
-  int decay = div_fp(load_avg_2, add_fp_int(load_avg_2, 1));
-  t->recent_cpu = add_fp_int(mult_fp(decay, t->recent_cpu), t->nice);
+  int load_avg_2 = multiply_fixed_point_and_int(load_avg, 2);
+  int decay = divide_fixed_points(load_avg_2, add_fixed_point_and_int(load_avg_2, 1));
+  t->recent_cpu = add_fixed_point_and_int(multiply_fixed_points(decay, t->recent_cpu), t->nice);
 }
 
 //actualizar recent_cpu
@@ -529,7 +529,7 @@ void bsd_update_recent_cpu(void){
 void bsd_recent_cpu_increment(void){
   struct thread *current_thread = thread_current ();
   if(current_thread != idle_thread){
-    current_thread->recent_cpu = add_fp_int(thread_current ()->recent_cpu, 1);
+    current_thread->recent_cpu = add_fixed_point_and_int(thread_current ()->recent_cpu, 1);
   }
 }
 
@@ -539,7 +539,7 @@ void bsd_load_avg(void){
   if(thread_current() != idle_thread){
     ready_threads++;
   }
-  load_avg = div_fp_int(add_fp(mult_fp_int(load_avg,59),int_to_fp(ready_threads)),60);
+  load_avg = divide_fixed_point_and_int(add_fixed_points(multiply_fixed_point_and_int(load_avg,59),int_to_fixed_point(ready_threads)),60);
 }
 
 /** Sets the current thread's nice value to NICE. */
@@ -572,7 +572,7 @@ int
 thread_get_load_avg (void) 
 {
   enum intr_level old_level = intr_disable ();
-  int load_avg_100 = fp_to_int_round(mult_fp_int(load_avg, 100));
+  int load_avg_100 = fixed_point_to_int_round(multiply_fixed_point_and_int(load_avg, 100));
   intr_set_level (old_level);
   return load_avg_100;
 }
@@ -582,7 +582,7 @@ int
 thread_get_recent_cpu (void) 
 {
   enum intr_level old_level = intr_disable ();
-  int recent_cpu = fp_to_int_round(mult_fp_int(thread_current ()->recent_cpu, 100));
+  int recent_cpu = fixed_point_to_int_round(multiply_fixed_point_and_int(thread_current ()->recent_cpu, 100));
   intr_set_level (old_level);
   return recent_cpu;
 }
