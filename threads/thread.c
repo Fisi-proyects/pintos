@@ -219,6 +219,8 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  thread_preempt();
+
   return tid;
 }
 
@@ -327,31 +329,33 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    //list_push_back (&ready_list, &cur->elem);
     list_insert_ordered(&ready_list, &cur->elem, compare_thread_priority, 0);
+
   cur->status = THREAD_READY;
   schedule ();//cede el cpu al siguiente hilo en la lista
   intr_set_level (old_level);
 }
 
 
-
-/* void
-thread_yield (void) 
+void
+thread_preempt (void)
 {
-  struct thread *cur = thread_current ();
-  enum intr_level old_level;
-  
-  ASSERT (!intr_context ());
+  if (list_empty (&ready_list)) { return; }
 
-  old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
-  cur->status = THREAD_READY;
-  schedule ();
-  intr_set_level (old_level);
+  struct thread *t = thread_current ();
+  struct thread *ready_list_t = list_entry (
+    list_front (&ready_list), struct thread, elem
+  );
+
+  if (t->priority < ready_list_t->priority) {
+    thread_yield (); 
+  }
 }
- */
+
+
+
+
+
 
 /* Start of timer_sleep alarm clock implementation */
 
@@ -431,7 +435,16 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+
+  struct thread *t = thread_current();
+  if(t->priority == new_priority){
+    return;
+  }
+
+  t->original_priority = new_priority;
+
+  update_priority();
+  thread_preempt();
 }
 
 /** Returns the current thread's priority. */
@@ -559,6 +572,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->original_priority=priority;
+  t->released_lock= NULL;
+  list_init(&t->donations);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
