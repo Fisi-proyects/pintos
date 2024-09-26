@@ -11,15 +11,21 @@ struct semaphore
     struct list waiters;        /**< List of waiting threads. */
   };
 
+/** One semaphore in a list. */
+struct semaphore_elem 
+  {
+    struct list_elem elem;              /**< List element. */
+    struct semaphore semaphore;         /**< This semaphore. */
+  };
+
 void sema_init (struct semaphore *, unsigned value);
 void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
+int sema_waiters_head_thread_priority (struct semaphore *sema);
+bool compare_sema_priority (const struct list_elem *a, const struct list_elem *b, void *aux);
 
-
-void
-update_priority (void);
 /** Lock. */
 struct lock 
   {

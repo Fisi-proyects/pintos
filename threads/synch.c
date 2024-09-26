@@ -186,19 +186,6 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
 }
 
-void
-donate_priority (void)
-{
-  int depth = 0;
-  struct thread *t = thread_current ();
-  
-  for (depth = 0; t->released_lock != NULL && depth < 8; ++depth, t = t->released_lock->holder) {
-    if (t->released_lock->holder->priority < t->priority) {
-      t->released_lock->holder->priority = t->priority;
-    }
-  }
-}
-
 /** Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
    thread.
@@ -214,7 +201,6 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-
   if (thread_mlfqs) 
   {
     sema_down (&lock->semaphore);
@@ -223,17 +209,13 @@ lock_acquire (struct lock *lock)
     return;
   }
 
-
-  struct thread *t = thread_current ();
-
-  //printf("acquire tid = %d\n", t->tid);
+  struct thread *current_thread = thread_current ();
 
   if (lock->holder) {
-    t->released_lock = lock;
-    list_push_back (&lock->holder->donations, &t->donation_elem);
+    current_thread->released_lock = lock;
+    list_push_back (&lock->holder->donations, &current_thread->donation_elem);
     donate_priority ();
   }
-
 
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
@@ -259,36 +241,6 @@ lock_try_acquire (struct lock *lock)
   return success;
 }
 
-void
-update_priority (void)
-{
-  struct thread *t = thread_current ();
-  int new_priority = t->original_priority;
-  if(!list_empty (&t->donations)){
-    struct thread *top_donor= list_entry(list_front(&t->donations),struct thread,donation_elem) ;
-    t->priority=(new_priority<top_donor)? top_donor->priority: new_priority;
-  }
-  else{
-    t->priority = new_priority;
-  }
-}
-
-void
-remove_threads_from_donations (struct lock *lock)
-{
-  struct thread *t = thread_current ();
-  struct list_elem *e;
-
-  for (e = list_begin (&t->donations); e != list_end (&t->donations);) {
-    if(list_entry (e, struct thread, donation_elem)->released_lock == lock) {
-      e = list_remove (e);
-    } else {
-      e = list_next (e);
-    }
-  }
-}
-
-
 /** Releases LOCK, which must be owned by the current thread.
 
    An interrupt handler cannot acquire a lock, so it does not
@@ -300,13 +252,14 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
+  
 
   if(!thread_mlfqs){
     remove_threads_from_donations (lock);
     update_priority ();
   }
 
+  lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
 
@@ -321,13 +274,6 @@ lock_held_by_current_thread (const struct lock *lock)
   return lock->holder == thread_current ();
 }
 
-/** One semaphore in a list. */
-struct semaphore_elem 
-  {
-    struct list_elem elem;              /**< List element. */
-    struct semaphore semaphore;         /**< This semaphore. */
-  };
-
 /** Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
    code to receive the signal and act upon it. */

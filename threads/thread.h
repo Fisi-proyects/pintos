@@ -96,6 +96,9 @@ struct thread
     struct list_elem donation_elem;     /**< List element for donation list. */
     int original_priority;              /**< Original priority. */
 
+    int nice;                           /**< Nice value. */
+    int recent_cpu;                     /**< Recent CPU. */
+
 
    //Esta prioridad es la que se va a cambiar en caso de donaciones
     int priority;                       /**< Priority. */
@@ -146,7 +149,15 @@ void thread_exit (void) NO_RETURN;
 void thread_yield (void);               //busy waiting //original
 void set_thread_sleep(int64_t ticks);
 void wake_up_thread(int64_t ticks);
-
+void donate_priority(void);
+void update_priority(void);
+void remove_threads_from_donations(struct lock *lock);
+void bsd_priority(struct thread *t);
+void bsd_update_priority(void);
+void bsd_recent_cpu(struct thread *t);
+void bsd_update_recent_cpu(void);
+void bsd_recent_cpu_increment(void);
+void bsd_load_avg(void);
 
 
 /** Performs some operation on thread t, given auxiliary data AUX. */
