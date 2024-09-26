@@ -348,13 +348,16 @@ thread_yield (void)
 
 void thread_preempt (void)
 {
+  //si la lista de hilos listos esta vacia
   if (list_empty (&ready_list)) { return; }
-
+  //si el hilo actual tiene menor prioridad que el hilo con mayor prioridad
+  //se cede el cpu al hilo con mayor prioridad
   struct thread *current_thread = thread_current ();
   struct thread *next_thread = list_entry (
     list_front (&ready_list), struct thread, elem
   );
-
+  //si el hilo actual tiene menor prioridad que el hilo con mayor prioridad
+  //se cede el cpu al hilo con mayor prioridad
   if (current_thread->priority < next_thread->priority) {
     thread_yield (); 
   }
@@ -423,7 +426,8 @@ void thread_anticipate(void){
 
   if (current_thread->priority < next_thread->priority) {
     thread_yield();
-
+  }
+}
 void donate_priority (void)
 {
   int depth = 0;
@@ -526,16 +530,21 @@ void remove_threads_from_donations(struct lock *lock){
 void
 thread_set_priority (int new_priority) 
 {
-
+  //si el scheduler mlfqs esta activado
+  //no se puede cambiar la prioridad
   if(thread_mlfqs) {return;};
   struct thread *current_thread = thread_current();
+  
+  //si la nueva prioridad es la misma que la prioridad anterior 
+  //no se hace nada
   if(current_thread->priority == new_priority){
     return;
   }
-
+  //se guardan ambas prioridades
   current_thread->original_priority = new_priority;
-
+  //se actualiza la prioridad
   update_priority();
+  //se cede el cpu al hilo con mayor prioridad
   thread_preempt();
 
 }
