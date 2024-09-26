@@ -103,6 +103,9 @@ struct thread
    //Esta prioridad es la que se va a cambiar en caso de donaciones
     int priority;                       /**< Priority. */
 
+    int nice;                           /**< Nice value. */
+    int recent_cpu;                     /**< Recent CPU. */
+
 
     struct list_elem allelem;           /**< List element for all threads list. */
 
@@ -142,13 +145,18 @@ const char *thread_name (void);
 
 
 bool compare_to_wake_up(const struct list_elem *a, const struct list_elem *b, void *aux);
+
 bool compare_thread_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void thread_preempt (void);
+
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);               //busy waiting //original
 void set_thread_sleep(int64_t ticks);
 void wake_up_thread(int64_t ticks);
+
+void thread_anticipate(void);
+
 void donate_priority(void);
 void update_priority(void);
 void remove_threads_from_donations(struct lock *lock);
