@@ -219,7 +219,7 @@ lock_acquire (struct lock *lock)
   if (thread_mlfqs)
   {
     sema_down (&lock->semaphore);
-    lock->holder = thread_current ();
+    lock->holder = thread_current();
     return;
   }
   struct thread *current_thread = thread_current ();
@@ -234,8 +234,8 @@ lock_acquire (struct lock *lock)
     donate_priority ();
   }
   sema_down (&lock->semaphore);
-  current_thread->released_lock = NULL;
-  lock->holder = current_thread;
+  thread_current()->released_lock = NULL;
+  lock->holder = thread_current();
 }
 
 /** Tries to acquires LOCK and returns true if successful or false
@@ -275,15 +275,7 @@ lock_release (struct lock *lock)
   //se remueven las donaciones del hilo actual
   //en la lista de donaciones del holder del lock
   if(!thread_mlfqs){
-    struct thread *current_thread = thread_current ();
-    struct list_elem *e;
-    while(!list_empty(&current_thread->donations)){
-      if(list_entry(e, struct thread, donation_elem)->released_lock == lock){
-        e = list_remove(e);
-      } else {
-        e = list_next(e);
-      }
-    }
+    remove_threads_from_donations(lock);
     update_priority();
   }
 

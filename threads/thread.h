@@ -151,6 +151,7 @@ void wake_up_thread(int64_t ticks);
 void thread_anticipate(void);
 void donate_priority(void);
 void update_priority(void);
+void remove_threads_from_donations(struct lock *lock);
 void bsd_priority(struct thread *t);
 void bsd_update_priority(void);
 void bsd_recent_cpu(struct thread *t);
