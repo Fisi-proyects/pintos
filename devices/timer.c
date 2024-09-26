@@ -183,6 +183,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       bsd_update_priority();
     }
   }
+
   wake_up_thread(ticks);
 }
 

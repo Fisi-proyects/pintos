@@ -94,11 +94,14 @@ struct thread
     struct lock *released_lock;          /**< Lock that the thread has released. */
     struct list donations;              /**< List of threads that donated priority to this thread. */
     struct list_elem donation_elem;     /**< List element for donation list. */
+    int original_priority;              /**< Original priority. */
+
+    int nice;                           /**< Nice value. */
+    int recent_cpu;                     /**< Recent CPU. */
 
 
    //Esta prioridad es la que se va a cambiar en caso de donaciones
     int priority;                       /**< Priority. */
-    int original_priority;              /**< Original priority. */
 
     int nice;                           /**< Nice value. */
     int recent_cpu;                     /**< Recent CPU. */
@@ -142,13 +145,18 @@ const char *thread_name (void);
 
 
 bool compare_to_wake_up(const struct list_elem *a, const struct list_elem *b, void *aux);
-bool compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+
+bool compare_thread_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void thread_preempt (void);
+
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);               //busy waiting //original
 void set_thread_sleep(int64_t ticks);
 void wake_up_thread(int64_t ticks);
+
 void thread_anticipate(void);
+
 void donate_priority(void);
 void update_priority(void);
 void remove_threads_from_donations(struct lock *lock);
@@ -158,7 +166,6 @@ void bsd_recent_cpu(struct thread *t);
 void bsd_update_recent_cpu(void);
 void bsd_recent_cpu_increment(void);
 void bsd_load_avg(void);
-
 
 
 /** Performs some operation on thread t, given auxiliary data AUX. */

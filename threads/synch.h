@@ -23,8 +23,13 @@ void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
+
 int semaphore_waiters_front_thread_priority(struct semaphore *sema);
 bool compare_semaphore_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+
+int sema_waiters_head_thread_priority (struct semaphore *sema);
+bool compare_sema_priority (const struct list_elem *a, const struct list_elem *b, void *aux);
+
 
 /** Lock. */
 struct lock 
