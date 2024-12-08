@@ -99,13 +99,8 @@ struct thread
     int nice;                           /**< Nice value. */
     int recent_cpu;                     /**< Recent CPU. */
 
-
    //Esta prioridad es la que se va a cambiar en caso de donaciones
     int priority;                       /**< Priority. */
-
-    int nice;                           /**< Nice value. */
-    int recent_cpu;                     /**< Recent CPU. */
-
 
     struct list_elem allelem;           /**< List element for all threads list. */
 
