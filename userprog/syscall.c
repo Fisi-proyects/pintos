@@ -5,7 +5,7 @@
 #include "threads/thread.h"
 #include "filesys/filesys.h"
 
-static void syscall_handler (struct intr_frame );
+static void syscall_handler (struct intr_frame *);
 struct lock file_lock;
 void
 syscall_init (void) 
@@ -14,10 +14,10 @@ syscall_init (void)
 }
 
 
-/ unicamente para poder probar la syscall write se implmentara un parte del
-la funcion que pasa los argumentos /
+/* unicamente para poder probar la syscall write se implmentara un parte del
+la funcion que pasa los argumentos */
 
-bool validate_address (voidaddr)
+bool validate_address (void *addr)
 {
   if (addr >= STACK_BOTTOM && addr < PHYS_BASE && addr != 0)
     return true;
@@ -26,37 +26,38 @@ bool validate_address (voidaddr)
 }
 
 void 
-get_argument (int esp, intarg, int count)
+get_argument (int *esp, int *arg, int count)
 {
   int i;
   for (i = 0; i < count; i++)
   {
-    if (!validate_addr(esp + 1 + i)) { sys_exit(-1); }
-    arg[i] = (esp + 1 + i);
+
+    if (!validate_address(esp + 1 + i)) { sys_exit(-1); }
+    arg[i] = *(esp + 1 + i);
   }
 }
 
 
 static void
-syscall_handler (struct intr_framef)
+syscall_handler (struct intr_frame *f)
 {
-  if (!validate_addr (f->esp))
+  if (!validate_address (f->esp))
   {
     sys_exit (-1);
   }
-
+  
   thread_current()->esp = f->esp;
-
+  
   int argv[3];
 
-  switch ((int)f->esp)
+  switch (*(int *)f->esp)
   {
     case SYS_WRITE:
       get_argument (f->esp, &argv[0], 3);
-      if (!validate_addr ((void) argv[1])) 
+      if (!validate_address ((void*) argv[1])) 
         sys_exit (-1);
 
-      f->eax = syscall_write ((int) argv[0], (const void) argv[1], (unsigned) argv[2]);
+      f->eax = syscall_write ((int) argv[0], (const void*) argv[1], (unsigned) argv[2]);
       break;
   }
 }
@@ -65,9 +66,10 @@ syscall_handler (struct intr_framef)
 
 
 /* pcb solo se activa en tiempo de ejecucion mediante una excepcion
-cuando el usuario intenta llamar a una syscall /
+cuando el usuario intenta llamar a una syscall */
 int 
-sys_write (int fd, const voidbuffer, unsigned size)
+syscall_write (int fd, const void *buffer, unsigned size)
+
 {
   int fd_count = thread_current()->pcb->fd_count;
   if (fd >= fd_count || fd < 1)
