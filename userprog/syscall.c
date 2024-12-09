@@ -31,6 +31,7 @@ get_argument (int *esp, int *arg, int count)
   int i;
   for (i = 0; i < count; i++)
   {
+
     if (!validate_address(esp + 1 + i)) { sys_exit(-1); }
     arg[i] = *(esp + 1 + i);
   }
@@ -68,6 +69,7 @@ syscall_handler (struct intr_frame *f)
 cuando el usuario intenta llamar a una syscall */
 int 
 syscall_write (int fd, const void *buffer, unsigned size)
+
 {
   int fd_count = thread_current()->pcb->fd_count;
   if (fd >= fd_count || fd < 1)
