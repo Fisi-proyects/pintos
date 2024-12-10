@@ -6,7 +6,6 @@
 - Sebastian Cueto Salazar: <sebastian.cueto@unmsm.edu.pe>
 - Ricardo Calderon Flores: <ricardo.calderon4@unmsm.edu.pe>
 
-## Ejercicio 1
 ## Syscall Write
 
 #### 1. Process Context Block
@@ -284,11 +283,98 @@ Este método se llama desde el controlador de fallos de página y realiza la car
 
 Se utiliza para implementar la carga diferida aprovechando los fallos de página. Cuando se intenta acceder a una página aún no cargada en memoria, el controlador llama a load_page () para realizar la carga.
 
-
-
-
 ## Stack Grow
+### ESTRUCTURA
+#### 1. ESP
+```c
+//Archivo: threads/thread.h
 
-#### ESTRUCTURA
+struct thread{
+  ...
+  void *esp;
+  ...
+}
+```
+Para hacer crecer el stack dinamicamante, es necesario registrar el puntero del stack para cada `thread`. Por lo tanto, se agregó el campo `esp` para almacenar el puntero del stack.
 
-#### ALGORITMO
+#### 2. Limite del stack
+```c
+//Archivo: userprog/exception.h
+
+#define MAX_STACK_SIZE (8 * 1024 * 1024)
+```
+El limite de tamaño del stack se estableció en 8MB porque es el default en muchos sistemas GNU/Linux.
+### ALGORITMO
+#### 1. Page Fault
+```c
+//Archivo: userprog/exception.c
+
+static void
+page_fault(struct intr_frame *f) {
+  ...
+  upage = pg_round_down(fault_addr);
+  if (is_kernel_vaddr (fault_addr) || !not_present) {
+    sys_exit (-1);
+  }
+   
+  spt = &thread_current()->spt;
+  spe = get_spte(spt, upage);
+
+  esp = user ? f->esp : thread_current()->esp;
+  if (fault_addr >= esp - 32 && fault_addr < PHYS_BASE && fault_addr >= PHYS_BASE - MAX_STACK_SIZE) {
+    if (!get_spte(spt, upage)) {
+      init_zero_spte (spt, upage);
+    }
+  }
+  ...
+}
+```
+Esta función se llama cuando ocurre un page fault. Determina la causa del fallo y toma las medidas adecuadas para manejarlo. Si la dirección que
+causó el fallo es una dirección del kernel o la página ya está presente, el proceso se termina. De lo contrario, intenta cargar la página desde la 
+tabla de páginas suplementaria (`spt`) y, si es necesario, aumenta el tamaño del stack. Cuando ocurre un page fault, si la dirección donde esto ocurrió y el `esp` del `thread` actual están significativamente cerca por una diferencia de `32`, se crea una entrada de tabla de páginas suplementarias(`spt`) llena con `0` y se asigna como espacio libre en el stack.
+
+#### 2. Setup Stack
+```c
+//Archivo: userprog/process.c
+
+static bool
+setup_stack(void **esp) {
+  uint8_t *kpage;
+  bool success = false;
+
+  kpage = falloc_get_page(PAL_USER | PAL_ZERO, PHYS_BASE - PGSIZE);
+  if (kpage != NULL) {
+    success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+
+    if (success) {
+      init_frame_spte(&thread_current()->spt, PHYS_BASE - PGSIZE, kpage);
+      *esp = PHYS_BASE;
+    } else {
+      falloc_free_page(kpage);
+    }      
+  }
+  
+  return success;
+}
+```
+Esta función intenta asignar una página de memoria usando `falloc_get_page` con las flags `PAL_USER | PAL_ZERO` y la dirección `PHYS_BASE - PGSIZE`. Si la asignación es exitosa, instala la página en la tabla de páginas con `install_page`. Si la instalación es exitosa, inicializa la entrada de la tabla de páginas suplementaria del frame con `init_frame_spte` y establece el puntero del stack `esp` a `PHYS_BASE`. Si la instalación falla, libera la página asignada.
+
+#### A1: Explique su heurística para decidir si un error de página para una dirección virtual no válida debería hacer que el stack se extienda a la página que falló.
+1. **Dirección de fallo dentro del rango del stack**: La dirección que causó el fallo (`fault_addr`) debe estar dentro del rango permitido para el stack. Esto se verifica con la condición:
+```c
+if (fault_addr >= esp - 32 && fault_addr < PHYS_BASE && fault_addr >= PHYS_BASE - MAX_STACK_SIZE)
+```
+Aquí, `esp` es el puntero al stack actual, `PHYS_BASE` es la dirección base de la memoria física y `MAX_STACK_SIZE` es el tamaño máximo permitido para el stack (8 MB en este caso).
+
+2. **Página no presente**: La página que causó el fallo no debe estar presente en la memoria. Esto se verifica con la condición:
+```c
+if (!not_present)
+```
+Aquí, `not_present` es una variable booleana que indica si la página no está presente.
+
+3. **Inicialización de una nueva entrada de página cero**: Si la dirección de fallo está dentro del rango del stack y la página no está presente, se inicializa una nueva entrada de página cero en la tabla de páginas suplementaria (SPT) con:
+```c
+if (!get_spte(spt, upage)) {
+  init_zero_spte(spt, upage);
+}
+```
