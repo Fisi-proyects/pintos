@@ -7,8 +7,66 @@
 - Ricardo Calderon Flores: <ricardo.calderon4@unmsm.edu.pe>
 
 ## Syscall Write
+### ESTRUCTURA
 
-### 1. Implementación de `syscall_write`
+### 1. Process Context Block
+
+```c
+struct pcb
+  {
+    int exit_code;
+    bool is_exited;
+    bool is_loaded;
+
+    struct file **fd_table;
+    int fd_count;
+    struct file *file_ex;
+
+    struct semaphore sema_wait;
+    struct semaphore sema_load;
+  };
+```
+
+```c
+struct thread
+  {
+    // ...
+#ifdef USERPROG
+    // ...
+    struct pcb *pcb;                    /* PCB. */
+    // ...
+  };
+```
+
+Para gestionar la información de cada proceso, se diseñó e implementó la estructura `pcb`, que se integra en cada `thread` para mantener su contexto. Dentro de esta estructura, el campo `exit_code` almacena el código de salida definido por la llamada al sistema `exit`, mientras que los indicadores `is_exited` e `is_loaded` reflejan el estado actual del proceso.
+
+Los descriptores de archivo asignados al proceso se controlan mediante `fd_table` y `fd_count`, y el archivo ejecutado por el proceso es referenciado a través de `file_ex`. Para garantizar la sincronización entre los procesos, se incorporaron semáforos en la PCB que permiten la gestión de operaciones de `wait` y `load`, los cuales son inicializados al momento de la creación del hilo en `thread_create`.
+
+### 2. Relación padre-hijo
+
+```c
+struct thread
+  {
+    // ...
+#ifdef USERPROG
+    // ...
+    struct thread *parent_process;
+    struct list list_child_process;
+    struct list_elem elem_child_process;
+#endif
+    // ...
+  };
+```
+
+El campo anterior se agregó a la estructura del hilo para gestionar y hacer seguimiento de la información tanto del proceso principal como de los procesos secundarios.
+
+Cuando un hilo ejecuta la función `exec`, se genera un nuevo proceso y la estructura descrita se utiliza para representar estos procesos en una jerarquía de tipo árbol, con una relación padre-hijo. El proceso que ejecutó la creación del nuevo proceso se guarda en el campo `parent_process`, mientras que los procesos secundarios generados se almacenan en el campo `list_child_process`.
+
+Estos campos son inicializados durante la creación del hilo, específicamente en la función `thread_create`.
+
+### ALGORITMO
+
+#### 1. Implementación de `syscall_write`
 ```c
 int 
 syscall_write (int fd, const void *buffer, unsigned size)
@@ -50,22 +108,11 @@ syscall_write (int fd, const void *buffer, unsigned size)
   return -1; // En caso de error inesperado
 }
 ```
-
-### Descripción de `syscall_write`
-La implementación de `syscall_write` considera tres casos principales:
-
-1. **Descriptor de archivo inválido:**
-   Si el descriptor de archivo (`fd`) no es válido, la función termina inmediatamente con un error llamando a `sys_exit(-1)`.
-
-2. **Escritura en `stdout`:**
-   Si el descriptor de archivo es `1`, lo que indica salida estándar (consola), utiliza la función `putbuf` para escribir los datos en la consola. Se utiliza un bloqueo (`file_lock`) para evitar condiciones de carrera durante el acceso concurrente.
-
-3. **Escritura en un archivo:**
-   En este caso, la función verifica que el descriptor de archivo corresponda a un archivo abierto. Si el archivo es válido, utiliza la función `file_write` para escribir en el archivo mientras asegura exclusión mutua con `file_lock`.
+La implementación de `syscall_write` considera tres casos principales: si el descriptor de archivo no es válido, la función termina con un error llamando a `sys_exit(-1)`. En el caso de que el descriptor sea `1` (salida estándar), utiliza `putbuf` para escribir en la consola con un bloqueo para evitar condiciones de carrera. Finalmente, si el descriptor corresponde a un archivo abierto válido, se utiliza `file_write` asegurando exclusión mutua mediante un bloqueo para proteger la operación.
 
 ---
 
-### 2. Modificación de `syscall_handler`
+#### 2. Modificación de `syscall_handler`
 ```c
 static void
 syscall_handler (struct intr_frame *f)
@@ -97,25 +144,7 @@ syscall_handler (struct intr_frame *f)
   }
 }
 ```
-
-### Descripción de `syscall_handler`
-
-1. **Validación inicial:**
-   Se verifica que la dirección de la pila sea válida utilizando `validate_address`. Si no lo es, se llama a `sys_exit(-1)` para terminar el proceso.
-
-2. **Obtención de argumentos:**
-   Utiliza la función `get_argument` para extraer los argumentos necesarios de la pila (en este caso, tres argumentos).
-
-3. **Validación del buffer:**
-   Antes de proceder, verifica que la dirección del buffer sea válida llamando nuevamente a `validate_address`.
-
-4. **Llamada a `syscall_write`:**
-   Finalmente, llama a la función `syscall_write` con los argumentos extraídos y almacena el resultado en el registro `eax` del marco de interrupción.
-
----
-
-### Consideraciones finales
-La implementación asegura exclusión mutua utilizando bloqueos (`file_lock`) para proteger las operaciones de escritura, previniendo así condiciones de carrera. Además, la validación exhaustiva de los argumentos garantiza que las operaciones de sistema no se ejecuten con datos inválidos, lo que contribuye a la estabilidad del sistema.
+El manejador `syscall_handler` valida inicialmente que la dirección de la pila sea válida utilizando `validate_address`. Luego extrae los argumentos necesarios mediante `get_argument`. Antes de proceder, verifica que la dirección del buffer sea válida. Finalmente, llama a `syscall_write` con los argumentos obtenidos y almacena el resultado en el registro `eax` del marco de interrupción.
 
 
 ## Lazy Loading
