@@ -6,7 +6,6 @@
 - Sebastian Cueto Salazar: <sebastian.cueto@unmsm.edu.pe>
 - Ricardo Calderon Flores: <ricardo.calderon4@unmsm.edu.pe>
 
-## Ejercicio 1
 ## Syscall Write
 
 #### 1. Process Context Block
@@ -284,22 +283,7 @@ Este método se llama desde el controlador de fallos de página y realiza la car
 
 Se utiliza para implementar la carga diferida aprovechando los fallos de página. Cuando se intenta acceder a una página aún no cargada en memoria, el controlador llama a load_page () para realizar la carga.
 
-
-
-
 ## Stack Grow
-
-#### ESTRUCTURA
-
-#### ALGORITMO
-
-
-
-
-
-
-## Ejercicio 3
-
 ### ESTRUCTURA
 #### 1. ESP
 ```c
