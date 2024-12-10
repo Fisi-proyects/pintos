@@ -6,27 +6,18 @@
 - Sebastian Cueto Salazar: <sebastian.cueto@unmsm.edu.pe>
 - Ricardo Calderon Flores: <ricardo.calderon4@unmsm.edu.pe>
 
+## Syscall Write
+
+## Lazy Loading
+
+#### Data Structures
 
 
-## Ejercicio 1
+
+#### Algorithms
+
+## Stack Grow
 
 #### ESTRUCTURA
 
-
-
-
 #### ALGORITMO
-
-## Ejercicio 2
-
-#### ESTRUCTURA
-
-
-
-
-#### ALGORITMO
-
-
-
-
-
