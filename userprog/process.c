@@ -435,14 +435,29 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  /*
+  Asigna una página de memoria e instala en la tabla de páginas.
+  
+  Esta función intenta asignar una página de memoria usando `falloc_get_page`
+  con las banderas `PAL_USER | PAL_ZERO` y la dirección `PHYS_BASE - PGSIZE`.
+  Si la asignación es exitosa, instala la página en la tabla de páginas
+  con `install_page`. Si la instalación es exitosa, inicializa la entrada de la
+  tabla de páginas suplementaria del frame con `init_frame_spte` y establece el
+  puntero del stack `esp` a `PHYS_BASE`. Si la instalación falla, libera la
+  página asignada.
+  */
+
+  kpage = falloc_get_page (PAL_USER | PAL_ZERO, PHYS_BASE - PGSIZE);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
+      if (success) 
+      {
+        init_frame_spte (&thread_current ()->spt, PHYS_BASE - PGSIZE, kpage);
         *esp = PHYS_BASE;
+      }
       else
-        palloc_free_page (kpage);
+        falloc_free_page (kpage);
     }
   return success;
 }

@@ -139,8 +139,8 @@ struct thread
 #endif
 
     /* Owned by thread.c. */
-    struct hash spt;
-    void *esp;
+    struct hash spt;                   /**< Supplemental page table. */
+    void *esp;                         /**< Saved stack pointer. */
     unsigned magic;                     /**< Detects stack overflow. */
   };
 
