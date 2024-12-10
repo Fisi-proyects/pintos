@@ -403,7 +403,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes, 
 
 Se modificó el proceso para eliminar la carga inmediata de segmentos en memoria. En su lugar, se crean entradas en la tabla de páginas suplementaria (SPT) para que las páginas se carguen de manera diferida cuando se produzca un fallo de página (PF).
 
-##### . Carga de Página (load_page)
+##### 2. Carga de Página (load_page)
 
 ```c
 bool
@@ -452,7 +452,7 @@ load_page(struct hash *spt, void *upage) {
 
 Este método se llama desde el controlador de fallos de página y realiza la carga diferida de páginas. Según el estado de la entrada (`PAGE_ZERO`, `PAGE_SWAP`, o `PAGE_FILE`), la página se inicializa, se recupera del espacio de intercambio, o se carga desde un archivo. Luego, se actualiza el directorio de páginas y el estado de la entrada.
 
-#### 3. Controlador de Fallos de Página (page_fault)
+##### 3. Controlador de Fallos de Página (page_fault)
 
 
 ```c
@@ -468,8 +468,11 @@ static void page_fault(struct intr_frame *f) {
 Se utiliza para implementar la carga diferida aprovechando los fallos de página. Cuando se intenta acceder a una página aún no cargada en memoria, el controlador llama a `load_page()` para realizar la carga.
 
 ## Stack Grow
+
 ### ESTRUCTURA
+
 #### 1. ESP
+
 ```c
 //Archivo: threads/thread.h
 
