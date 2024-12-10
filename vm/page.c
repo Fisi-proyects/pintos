@@ -6,7 +6,7 @@
 
 static hash_hash_func spt_hash_func;
 static hash_less_func spt_less_func;
-static void page_destutcor (struct hash_elem *elem, void *aux);
+static void page_destructor (struct hash_elem *elem, void *aux);
 extern struct lock file_lock;
 
 void
@@ -18,7 +18,7 @@ init_spt (struct hash *spt)
 void
 destroy_spt (struct hash *spt)
 {
-  hash_destroy (spt, page_destutcor);
+  hash_destroy (spt, page_destructor);
 }
 
 void
@@ -183,7 +183,7 @@ spt_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux)
 }
 
 static void
-page_destutcor (struct hash_elem *elem, void *aux)
+page_destructor (struct hash_elem *elem, void *aux)
 {
   struct spte *e;
 

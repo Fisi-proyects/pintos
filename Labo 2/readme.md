@@ -6,14 +6,9 @@
 - Sebastian Cueto Salazar: <sebastian.cueto@unmsm.edu.pe>
 - Ricardo Calderon Flores: <ricardo.calderon4@unmsm.edu.pe>
 
+## Ejercicio 1
 ## Syscall Write
 
-## Lazy Loading
-
-
-## Ejercicio 1
-
-### ESTRUCTURA
 #### 1. Process Context Block
 ```c
 struct pcb
@@ -234,6 +229,62 @@ Para garantizar la sincronización entre los procesos padre e hijo, se introduje
 
 ### 2. Gestión de Memoria
 Para evitar fugas de memoria, se liberó toda la memoria asignada cuando un proceso terminaba. Después de la asignación de memoria, se verificó si la asignación fue exitosa. En caso de que se produjera un desbordamiento de memoria, el proceso se terminaba para prevenir fallos de página debido a accesos a memoria inválida.
+
+
+## Lazy Loading
+
+*Para el desarrollo del lazy loading no es necesario como tal la implementacion de un `Frame Table`  pero lo implementamos de igual manera para facilitarnos ciertas cosas necesarias dentro del lazy loading como la interaccion con el `page_handler`*
+
+
+#### Tabla de Marcos (Frame Table)
+
+###### Estructuras de Datos
+1. Entrada de la Tabla de Marcos
+
+La estructura fte representa cada entrada en la tabla de marcos y está diseñada para considerar cada marco como una unidad. kpage almacena la página virtual del kernel y upage almacena la página virtual del usuario. t apunta al hilo propietario de la entrada, y la entrada se gestiona en la lista frame_table mediante list_elem.
+2. Tabla de Marcos
+
+frame_table es una lista que contiene las entradas fte y constituye la estructura principal de la tabla de marcos.
+3. Bloqueo para la Tabla de Marcos
+
+Para evitar problemas de sincronización al acceder simultáneamente a la tabla de marcos desde múltiples procesos, se utiliza un bloqueo (frame_lock) para proteger las secciones críticas.
+4. clock_cursor
+
+Cuando no hay marcos libres, este campo ayuda a encontrar un marco para la expulsión. Más detalles sobre su uso se discutirán en la sección de intercambio (swapping).
+Algoritmos
+1. frame_init ()
+
+Se inicializan las estructuras de datos necesarias para gestionar la tabla de marcos. frame_table se inicializa con list_init (), el bloqueo se inicializa con lock_init (), y clock_cursor se establece en NULL. Esta función se llama en el proceso de inicialización del sistema de hilos (main ()).
+2. falloc_get_page ()
+
+Esta función asigna un nuevo marco como una entrada fte. Utiliza palloc_get_page () para asignar kpage correspondiente a upage. Si no hay marcos disponibles, se llama a evict_page () para liberar espacio. La entrada recién creada se añade a frame_table. El acceso a frame_table está protegido por frame_lock.
+3. falloc_free_page ()
+
+Libera un marco previamente asignado. Recibe kpage como parámetro, encuentra la entrada correspondiente en frame_table y la elimina. También se asegura de que futuras referencias a la página generen fallos de página (pagedir_clear_page ()).
+4. get_fte ()
+
+Esta función busca y devuelve la entrada fte correspondiente a una página del kernel específica (kpage) recorriendo frame_table.
+5. Configuración de la Pila (setup_stack ())
+
+La función ahora utiliza falloc_get_page () para asignar marcos, permitiendo que la pila se gestione con la tabla de marcos.
+Discusión
+1. Implementación de la Tabla de Marcos con un Bitmap
+
+Actualmente, la tabla de marcos se gestiona con una lista, lo que puede causar un rendimiento lento en operaciones de búsqueda y modificación. Implementar la tabla con un bitmap podría mejorar significativamente el rendimiento.
+Carga Diferida (Lazy Loading)
+Implementación
+Algoritmos
+1. Carga de Segmento (load_segment)
+
+Se modificó el proceso para eliminar la carga inmediata de segmentos en memoria. En su lugar, se crean entradas en la tabla de páginas suplementaria (SPT) para que las páginas se carguen de manera diferida cuando se produzca un fallo de página (PF).
+2. Carga de Página (load_page)
+
+Este método se llama desde el controlador de fallos de página y realiza la carga diferida de páginas. Según el estado de la entrada (PAGE_ZERO, PAGE_SWAP, o PAGE_FILE), la página se inicializa, se recupera del espacio de intercambio, o se carga desde un archivo. Luego, se actualiza el directorio de páginas y el estado de la entrada.
+3. Controlador de Fallos de Página (page_fault)
+
+Se utiliza para implementar la carga diferida aprovechando los fallos de página. Cuando se intenta acceder a una página aún no cargada en memoria, el controlador llama a load_page () para realizar la carga.
+
+
 
 
 ## Stack Grow
