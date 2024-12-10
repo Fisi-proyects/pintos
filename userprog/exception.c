@@ -127,6 +127,12 @@ page_fault (struct intr_frame *f)
   bool user;         /**< True: access by user, false: access by kernel. */
   void *fault_addr;  /**< Fault address. */
 
+  void *esp; // Puntero al stack
+  void *upage; // Puntero a la página
+  void *kpage; // Puntero a la página física
+  struct hash *spt; // Tabla de páginas suplementaria
+  struct spte *spe; // Entrada de la tabla de páginas suplementaria
+
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -147,6 +153,36 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+
+
+
+  /**
+  Maneja una excepción de page fault.
+  
+  Esta función se llama cuando ocurre un page fault. Determina la causa
+  del fallo y toma las medidas adecuadas para manejarlo. Si la dirección que
+  causó el fallo es una dirección del kernel o la página ya está presente, 
+  el proceso se termina. De lo contrario, intenta cargar la página desde la 
+  tabla de páginas suplementaria (SPT) y, si es necesario, aumenta el tamaño 
+  del stack.
+  */
+  upage = pg_round_down(fault_addr);
+  if (is_kernel_vaddr (fault_addr) || !not_present) 
+    sys_exit (-1);
+  spt = &thread_current()->spt;
+  spe = get_spte(spt, upage);
+  esp = user ? f->esp : thread_current()->esp;
+  if (fault_addr >= esp - 32 && fault_addr < PHYS_BASE && fault_addr >= PHYS_BASE - MAX_STACK_SIZE) {
+    if (!get_spte(spt, upage)) {
+      init_zero_spte (spt, upage);
+    }
+  }
+  if (load_page (spt, upage)) {
+     return;
+  }
+  sys_exit (-1);
+
+
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
