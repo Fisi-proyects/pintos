@@ -6,6 +6,9 @@
 - Sebastian Cueto Salazar: <sebastian.cueto@unmsm.edu.pe>
 - Ricardo Calderon Flores: <ricardo.calderon4@unmsm.edu.pe>
 
+## Syscall Write
+
+## Lazy Loading
 
 
 ## Ejercicio 1
@@ -232,16 +235,9 @@ Para garantizar la sincronización entre los procesos padre e hijo, se introduje
 ### 2. Gestión de Memoria
 Para evitar fugas de memoria, se liberó toda la memoria asignada cuando un proceso terminaba. Después de la asignación de memoria, se verificó si la asignación fue exitosa. En caso de que se produjera un desbordamiento de memoria, el proceso se terminaba para prevenir fallos de página debido a accesos a memoria inválida.
 
-## Ejercicio 2
+
+## Stack Grow
 
 #### ESTRUCTURA
 
-
-
-
 #### ALGORITMO
-
-
-
-
-
