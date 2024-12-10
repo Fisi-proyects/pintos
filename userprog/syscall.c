@@ -69,30 +69,51 @@ syscall_handler (struct intr_frame *f)
 cuando el usuario intenta llamar a una syscall */
 int 
 syscall_write (int fd, const void *buffer, unsigned size)
-
 {
+  if (!validate_address((void *)buffer)) {
+    sys_exit(-1); // Dirección de buffer no válida
+  }
+
   int fd_count = thread_current()->pcb->fd_count;
   if (fd >= fd_count || fd < 1)
   {
-    sys_exit (-1);
-  } else if (fd == 1)
+    sys_exit(-1); // Descriptor de archivo no válido
+  } 
+  else if (fd == 1) // Escribir en consola (stdout)
   {
-    lock_acquire (&file_lock);
+    lock_acquire(&file_lock);
     putbuf(buffer, size);
-    lock_release (&file_lock);
+    lock_release(&file_lock);
     return size;
-  } else {
-    int bytes_written;
-    struct file *file = thread_current ()->pcb->fd_table[fd];
-
+  } 
+  else 
+  {
+    struct file *file = thread_current()->pcb->fd_table[fd];
     if (file == NULL) {
-      sys_exit (-1);
+      sys_exit(-1); // Archivo no encontrado
     }
 
-    lock_acquire (&file_lock);
-    bytes_written = file_write (file, buffer, size);
-    lock_release (&file_lock);
+    // Leer contenido antes de escribir
+    char *read_buffer = malloc(size);
+    if (read_buffer == NULL) {
+      sys_exit(-1); // Error al asignar memoria
+    }
 
+    lock_acquire(&file_lock);
+    int bytes_read = file_read(file, read_buffer, size);
+    lock_release(&file_lock);
+
+    if (bytes_read < 0) {
+      free(read_buffer); // Liberar memoria antes de salir
+      sys_exit(-1); // Error al leer el archivo
+    }
+
+    // Escribir después de leer
+    lock_acquire(&file_lock);
+    int bytes_written = file_write(file, buffer, size);
+    lock_release(&file_lock);
+
+    free(read_buffer); // Liberar memoria después de usarla
     return bytes_written;
   }
 }
