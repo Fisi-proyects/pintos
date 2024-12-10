@@ -95,3 +95,4 @@ syscall_write (int fd, const void *buffer, unsigned size)
 
     return bytes_written;
   }
+}
